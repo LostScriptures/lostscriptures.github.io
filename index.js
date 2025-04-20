@@ -4,7 +4,7 @@ var fragmentShader = `
     varying vec4 vColor;
     void main(void) {
         gl_FragColor = vColor;
-    }`
+    }`;
  
  
 var vertexShader = ` 
@@ -16,8 +16,7 @@ var vertexShader = `
     void main(void) {
         gl_Position = vec4(positionAttr, 1.0);
         vColor = colorAttr;
-    }`
- 
+    }`;
  
 var gl = null;
 var viewportWidth = 0;
@@ -126,7 +125,7 @@ gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 function webGLStart() {
-var canvas = document.getElementById("lesson02-canvas");
+var canvas = document.getElementById("canvas");
 initGL(canvas);
 initShaders()
 initGeometry();
