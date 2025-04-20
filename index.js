@@ -41,7 +41,11 @@ if (!gl) {
 }
 
 function getShader(gl, id) {
-var script = document.getElementById(id);
+var scripts = [
+    "shader-fs" = fragmentShader,
+    "shader-vs" = vertexShader
+];
+var script = scripts[id];
 if (!script) {
     return null;
 }
