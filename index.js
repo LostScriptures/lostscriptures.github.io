@@ -51,9 +51,9 @@ if (!script) {
 }
 
 var shader;
-if (script.type == "x-shader/x-fragment") {
+if (id == "shader-fs") {
     shader = gl.createShader(gl.FRAGMENT_SHADER);
-} else if (script.type == "x-shader/x-vertex") {
+} else if (id == "shader-vs") {
     shader = gl.createShader(gl.VERTEX_SHADER);
 } else {
     return null;
