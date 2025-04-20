@@ -1,26 +1,13 @@
-var fragmentShader = ` 
-    precision mediump float;
-
-    varying vec4 vColor;
-    void main(void) {
-        gl_FragColor = vColor;
-    }`;
- 
- 
-var vertexShader = ` 
-    attribute vec3 positionAttr;
-    attribute vec4 colorAttr;
- 
-    varying vec4 vColor;
- 
-    void main(void) {
-        gl_Position = vec4(positionAttr, 1.0);
-        vColor = colorAttr;
-    }`;
- 
 var gl = null;
 var viewportWidth = 0;
 var viewportHeight = 0;
+var fragmentShader;
+var vertexShader;
+
+function loadFile(fileName) {
+    var f = fetch(fileName.toString())
+    console.log(f)
+};
 
 function initGL(canvas) {
     try {
@@ -49,8 +36,9 @@ function getShader(gl, id) {
     if (!script) {
         return null;
     }
-    console.log(scripts);
+    console.log(script);
     var shader;
+
     if (id == "shader-fs") {
         shader = gl.createShader(gl.FRAGMENT_SHADER);
     } else if (id == "shader-vs") {
@@ -59,7 +47,7 @@ function getShader(gl, id) {
         return null;
     }
 
-    gl.shaderSource(shader, script.text);
+    gl.shaderSource(shader, script);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
