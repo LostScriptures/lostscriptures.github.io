@@ -1,12 +1,23 @@
 var gl = null;
 var viewportWidth = 0;
 var viewportHeight = 0;
-var fragmentShader;
-var vertexShader;
+let startTime;
+
+function removeItemAll(arr, value) {
+    var i = 0;
+    while (i < arr.length) {
+      if (arr[i] === value) {
+        arr.splice(i, 1);
+      } else {
+        ++i;
+      }
+    }
+    return arr;
+}
 
 function loadFile(fileName) {
-    var f = fetch(fileName.toString())
-    console.log(f)
+    return fetch(fileName)
+        .then((res) => res.text())
 };
 
 function initGL(canvas) {
@@ -20,38 +31,20 @@ function initGL(canvas) {
         }
     } catch (e) {
     }
-    // Not the best error detection logic.
-    // Redirect to http://get.webgl.org in failure case.
+
     if (!gl) {
         alert("Could not initialise WebGL, sorry :-(");
     }
 }
 
-function getShader(gl, id) {
-    var scripts = {
-        "shader-fs": [fragmentShader],
-        "shader-vs": [vertexShader]
-    };
-    var script = scripts[id];
-    if (!script) {
-        return null;
-    }
-    console.log(script);
-    var shader;
+function getShader(gl, type, source) {
+    const shader = gl.createShader(type);
 
-    if (id == "shader-fs") {
-        shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if (id == "shader-vs") {
-        shader = gl.createShader(gl.VERTEX_SHADER);
-    } else {
-        return null;
-    }
-
-    gl.shaderSource(shader, script);
+    gl.shaderSource(shader, source);
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        alert(gl.getShaderInfoLog(shader));
+        console.error("Shader compile failed:", gl.getShaderInfoLog(shader));
         return null;
     }
 
@@ -60,9 +53,14 @@ function getShader(gl, id) {
 
 var program;
 
-function initShaders() {
-    var vertexShader = getShader(gl, "shader-vs");
-    var fragmentShader = getShader(gl, "shader-fs");
+async function initShaders() {
+    const [vsSource, fsSource] = await Promise.all([
+        loadFile("vert.vs"),
+        loadFile("frag.fs")
+    ]);
+
+    var vertexShader = getShader(gl, gl.VERTEX_SHADER, vsSource);
+    var fragmentShader = getShader(gl, gl.FRAGMENT_SHADER, fsSource);
 
     program = gl.createProgram();
     gl.attachShader(program, vertexShader);
@@ -78,8 +76,11 @@ function initShaders() {
     program.positionAttr = gl.getAttribLocation(program, "positionAttr");
     gl.enableVertexAttribArray(program.positionAttr);
 
-    program.colorAttr = gl.getAttribLocation(program, "colorAttr");
-    gl.enableVertexAttribArray(program.colorAttr);
+    program.uTime = gl.getUniformLocation(program, "uTime");
+
+
+    //program.colorAttr = gl.getAttribLocation(program, "colorAttr");
+    //gl.enableVertexAttribArray(program.colorAttr);
 }
 
 var buffer;
@@ -89,14 +90,42 @@ function initGeometry() {
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     // Interleave vertex positions and colors
     var vertexData = [
-        // X    Y     Z     R     G     B     A
-        0.0,   0.8,  0.0,  1.0,  0.0,  0.0,  1.0,
-        // X    Y     Z     R     G     B     A
-        -0.8, -0.8,  0.0,  0.0,  1.0,  0.0,  1.0,
-        // X    Y     Z     R     G     B     A
-        0.8,  -0.8,  0.0,  0.0,  0.0,  1.0,  1.0
+        //X    Y     Z       R     G     B     A  (A)
+        0.0,  0.0,  0.0,    //1.0,  0.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (B)
+        1.0,  -0.45, 0.0,   //0.0,  1.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (C)
+        0.45, -1.0,  0.0,    //0.0,  0.0,  1.0,  1.0,
+        //X    Y     Z       R     G     B     A  (D)
+        -0.45, -1.0, 0.0,   //1.0,  0.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (E)
+        -1.0, -0.45, 0.0,   //0.0,  1.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (F)
+        -1.0, 0.45,  0.0,    //0.0,  0.0,  1.0,  1.0,
+        //X    Y     Z       R     G     B     A  (G)
+        -0.45, 1.0,  0.0,    //1.0,  0.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (H)
+        0.45,  1.0,  0.0,    //0.0,  1.0,  0.0,  1.0,
+        //X    Y     Z       R     G     B     A  (I)
+        1.0,  0.45,  0.0,    //0.0,  0.0,  1.0,  1.0,
     ];
+    
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+    indexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+    var indices = [
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 4,
+        0, 4, 5,
+        0, 5, 6,
+        0, 6, 7,
+        0, 7, 8,
+        0, 8, 1
+    ];
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
 }
 
 function drawScene() {
@@ -104,27 +133,46 @@ function drawScene() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
 
     // There are 7 floating-point values per vertex
-    var stride = 7 * Float32Array.BYTES_PER_ELEMENT;
+    var stride = 3 * Float32Array.BYTES_PER_ELEMENT;
 
     // Set up position stream
     gl.vertexAttribPointer(program.positionAttr, 3, gl.FLOAT, false, stride, 0);
     // Set up color stream
-    gl.vertexAttribPointer(program.colorAttr, 4, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT);
+    //gl.vertexAttribPointer(program.colorAttr, 4, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT);
 
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.drawElements(gl.TRIANGLES, 24, gl.UNSIGNED_SHORT, 0);
 }
 
-function webGLStart() {
+async function webGLStart() {
     var canvas = document.getElementById("canvas");
     initGL(canvas);
-    initShaders();
+    await initShaders();
     initGeometry();
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.disable(gl.DEPTH_TEST);
-
+    
     drawScene();
+
+    startTime = performance.now();
+    renderLoop();
+}
+
+
+function renderLoop() {
+    const currentTime = performance.now();
+    const elapsed = (currentTime - startTime) / 1000; // in seconds
+
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    // Set the uniform before drawing
+    gl.uniform1f(program.uTime, elapsed);
+
+    drawScene(); // your existing draw call
+
+    requestAnimationFrame(renderLoop);
 }
 

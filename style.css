@@ -2,3 +2,12 @@ body {
     background-color: black;
     color: white;
 }
+
+.center {
+    border: none;
+    padding: 10px;
+}
+
+.canvas {
+    border: none;
+}
